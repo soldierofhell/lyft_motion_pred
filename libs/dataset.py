@@ -151,5 +151,5 @@ class LyftGraphDataset(Dataset):
         return len(glob.glob(osp.join(self.processed_dir, "*.pt")))
 
     def get(self, idx: int):
-        data = torch.load(osp.join(self.processed_dir, self.to_filename(idx=idx)))
+        data = torch.load(osp.join(self.processed_dir, to_filename(idx=idx, split=self.split)))
         return data

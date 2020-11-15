@@ -10,20 +10,30 @@ import torch.nn.functional as F
 
 from libs.rasterizer import SemGraphRasterizer
 
+ACTIVE_VAL = 1.
+INACTIVE_VAL = 0.
+
+node_types = [SemGraphRasterizer.EGO,
+              SemGraphRasterizer.AGENTS,
+              SemGraphRasterizer.LANES,
+              SemGraphRasterizer.STOP_SIGNS,
+              SemGraphRasterizer.SPEED_HUMPS,
+              SemGraphRasterizer.SPEED_BUMPS,
+              SemGraphRasterizer.CROSSWALKS]
+node_type_col_ind = {node_type: ind for ind, node_type in enumerate(node_types)}
+
 
 def standardize(vec: torch.Tensor, mean: torch.Tensor, std: torch.Tensor) -> torch.Tensor:
     return (vec - mean) / std
 
 
+def get_mask(x: torch.Tensor, element_type: str) -> torch.Tensor:
+    node_type_col = node_type_col_ind[element_type]
+
+    return torch.nonzero(x[:, node_type_col].eq(ACTIVE_VAL), as_tuple=True)[0]
+
+
 class SceneGraphBuilder(object):
-    node_types = [SemGraphRasterizer.EGO,
-                  SemGraphRasterizer.AGENTS,
-                  SemGraphRasterizer.LANES,
-                  SemGraphRasterizer.STOP_SIGNS,
-                  SemGraphRasterizer.SPEED_HUMPS,
-                  SemGraphRasterizer.SPEED_BUMPS,
-                  SemGraphRasterizer.CROSSWALKS]
-    node_type_col_ind = {node_type: ind for ind, node_type in enumerate(node_types)}
 
     def __init__(self, raster_size: Tuple[int] = (224, 224)):
         self.raster_size = raster_size
@@ -99,8 +109,8 @@ class SceneGraphBuilder(object):
     def get_one_hot(self, n: int,
                     lane: Dict[str, Any],
                     feature_key: str,
-                    active_val: float = 1.0,
-                    inactive_val: float = -1.0) -> torch.Tensor:
+                    active_val: float = ACTIVE_VAL,
+                    inactive_val: float = INACTIVE_VAL) -> torch.Tensor:
         feature_val = lane[feature_key]
         feature_map = self.one_hot_idx[feature_key]
         feature_one_col = feature_map[feature_val]
@@ -113,8 +123,8 @@ class SceneGraphBuilder(object):
     @staticmethod
     def get_boolean_feature(n: int,
                             feature_val: bool,
-                            active_val: float = 1.0,
-                            inactive_val: float = -1.0) -> torch.Tensor:
+                            active_val: float = ACTIVE_VAL,
+                            inactive_val: float = INACTIVE_VAL) -> torch.Tensor:
         feature_val_int = active_val if feature_val else inactive_val
         return torch.ones(size=(n, 1), dtype=torch.float32) * feature_val_int
 
@@ -259,8 +269,8 @@ class SceneGraphBuilder(object):
 
         return torch.from_numpy(stop_sign_pos)
 
-    def extract_speed_hump_features(self, speed_humps: List[Dict[str, np.ndarray]]) -> Tuple[
-        torch.Tensor, torch.Tensor]:
+    def extract_speed_hump_features(self,
+                                    speed_humps: List[Dict[str, np.ndarray]]) -> Tuple[torch.Tensor, torch.Tensor]:
         speed_hump_id = 0
 
         features = []
@@ -344,8 +354,8 @@ class SceneGraphBuilder(object):
             feature_n, feature_dim = feature.shape
             max_feature_dim = max(max_feature_dim, feature_dim)
 
-            _one_hot_mat = torch.ones((feature_n, len(features)), dtype=torch.float) * -1.
-            _one_hot_mat[:, col] = 1.
+            _one_hot_mat = torch.ones((feature_n, len(features)), dtype=torch.float) * INACTIVE_VAL
+            _one_hot_mat[:, col] = ACTIVE_VAL
             node_type_mat.append(_one_hot_mat)
 
         node_type_mat = torch.cat(node_type_mat, dim=0)
@@ -370,27 +380,20 @@ class SceneGraphBuilder(object):
         }
         return feature
 
-    def get_target_positions(self, graph_info: Dict[str, Any]) -> torch.FloatTensor:
-        return graph_info["target_positions"]
+    def get_target_positions(self, graph_info: Dict[str, Any]) -> torch.Tensor:
+        return torch.tensor(graph_info["target_positions"])
 
-    def get_target_availabilities(self, graph_info: Dict[str, Any]) -> torch.FloatTensor:
-        return graph_info["target_availabilities"]
+    def get_target_availabilities(self, graph_info: Dict[str, Any]) -> torch.Tensor:
+        return torch.tensor(graph_info["target_availabilities"], dtype=torch.uint8)
 
     @classmethod
     def get_pos(cls, x: torch.Tensor) -> torch.Tensor:
-        pos_starting_col = len(cls.node_types)
+        pos_starting_col = len(node_types)
         return x[:, [pos_starting_col, pos_starting_col + 1]]
 
     @classmethod
-    def get_mask(cls, x: torch.Tensor,
-                 element_type: str) -> torch.Tensor:
-        node_type_col = cls.node_type_col_ind[element_type]
-
-        return x[:, node_type_col].eq(1)
-
-    @classmethod
     def get_batch_key(cls, ele_type: str):
-        assert ele_type in cls.node_type_col_ind
+        assert ele_type in node_type_col_ind
         return f"{ele_type}_batch"
 
     def knn_graph(self, pos: torch.Tensor, batch: Optional[torch.Tensor], k: int, flow: str) -> torch.Tensor:
@@ -400,23 +403,22 @@ class SceneGraphBuilder(object):
             return knn_graph(pos, batch=batch, k=k, flow=flow)
 
     def to_data(self, scene_info: Dict[str, Any], k: int, flow: str = "source_to_target") -> Data:
-        # TODO: use sparse tensor to save disk space
         feature = self.extract_feature(scene_info)
 
         x = feature["x"]
 
-        ego_mask = self.__class__.get_mask(x, SemGraphRasterizer.EGO)
+        ego_mask = get_mask(x, SemGraphRasterizer.EGO)
 
-        crosswalk_mask = self.__class__.get_mask(x, SemGraphRasterizer.CROSSWALKS)
+        crosswalk_mask = get_mask(x, SemGraphRasterizer.CROSSWALKS)
         crosswalk_batch = feature[self.__class__.get_batch_key(SemGraphRasterizer.CROSSWALKS)]
 
-        speed_bump_mask = self.__class__.get_mask(x, SemGraphRasterizer.SPEED_BUMPS)
+        speed_bump_mask = get_mask(x, SemGraphRasterizer.SPEED_BUMPS)
         speed_bump_batch = feature[self.__class__.get_batch_key(SemGraphRasterizer.SPEED_BUMPS)]
 
-        speed_hump_mask = self.__class__.get_mask(x, SemGraphRasterizer.SPEED_HUMPS)
+        speed_hump_mask = get_mask(x, SemGraphRasterizer.SPEED_HUMPS)
         speed_hump_batch = feature[self.__class__.get_batch_key(SemGraphRasterizer.SPEED_HUMPS)]
 
-        lane_mask = self.__class__.get_mask(x, SemGraphRasterizer.LANES)
+        lane_mask = get_mask(x, SemGraphRasterizer.LANES)
         lane_batch = feature[self.__class__.get_batch_key(SemGraphRasterizer.LANES)]
 
         y = self.get_target_positions(scene_info)
@@ -430,16 +432,11 @@ class SceneGraphBuilder(object):
         lane_edge_index = self.knn_graph(pos[lane_mask], batch=lane_batch, k=k, flow=flow)
         scene_edge_index = self.knn_graph(pos, batch=None, k=k, flow=flow)
 
-        return SceneGraphData(x=x,
-                              y=y,
-                              raster_from_world=scene_info["raster_from_world"],
-                              agent_from_world=scene_info["agent_from_world"],
-                              availabilities=availabilities,
-                              ego_mask=ego_mask,
-                              crosswalk_mask=crosswalk_mask,
-                              speed_bump_mask=speed_bump_mask,
-                              speed_hump_mask=speed_hump_mask,
-                              lane_mask=lane_mask,
+        return SceneGraphData(x=x.float().to_sparse(),
+                              y=y.float().to_sparse(),
+                              raster_from_world=torch.tensor(scene_info["raster_from_world"]).float(),
+                              agent_from_world=torch.tensor(scene_info["agent_from_world"]).float(),
+                              availabilities=availabilities.to_sparse(),
                               ego_edge_index=ego_edge_index,
                               crosswalk_edge_index=crosswalk_edge_index,
                               speed_bump_edge_index=speed_bump_edge_index,
@@ -451,20 +448,40 @@ class SceneGraphBuilder(object):
 class SceneGraphData(Data):
 
     @property
+    def ego_mask(self):
+        return get_mask(self.x, SemGraphRasterizer.EGO)
+
+    @property
     def ego_node_count(self) -> int:
         return self.ego_mask.sum().item()
+
+    @property
+    def crosswalk_mask(self):
+        return get_mask(self.x, SemGraphRasterizer.CROSSWALKS)
 
     @property
     def crosswalk_node_count(self) -> int:
         return self.crosswalk_mask.sum().item()
 
     @property
+    def speed_bump_mask(self):
+        return get_mask(self.x, SemGraphRasterizer.SPEED_BUMPS)
+
+    @property
     def speed_bump_node_count(self) -> int:
         return self.speed_bump_mask.sum().item()
 
     @property
+    def speed_hump_mask(self):
+        return get_mask(self.x, SemGraphRasterizer.SPEED_HUMPS)
+
+    @property
     def speed_hump_node_count(self) -> int:
         return self.speed_hump_mask.sum().item()
+
+    @property
+    def lane_mask(self):
+        return get_mask(self.x, SemGraphRasterizer.LANES)
 
     @property
     def lane_node_count(self) -> int:
