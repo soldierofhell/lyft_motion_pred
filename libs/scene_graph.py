@@ -434,6 +434,7 @@ class SceneGraphBuilder(object):
 
         return SceneGraphData(x=x.float().to_sparse(),
                               y=y.float().to_sparse(),
+                              edge_index=scene_edge_index,
                               raster_from_world=torch.tensor(scene_info["raster_from_world"]).float(),
                               agent_from_world=torch.tensor(scene_info["agent_from_world"]).float(),
                               availabilities=availabilities.to_sparse(),
@@ -441,11 +442,20 @@ class SceneGraphBuilder(object):
                               crosswalk_edge_index=crosswalk_edge_index,
                               speed_bump_edge_index=speed_bump_edge_index,
                               speed_hump_edge_index=speed_hump_edge_index,
-                              lane_edge_index=lane_edge_index,
-                              scene_edge_index=scene_edge_index)
+                              lane_edge_index=lane_edge_index)
 
 
 class SceneGraphData(Data):
+
+    def __init__(self, x=None, edge_index=None, edge_attr=None, y=None,
+                 pos=None, norm=None, face=None, **kwargs):
+        x = x.to_dense()
+        y = y.to_dense()
+        kwargs["availabilities"] = kwargs["availabilities"].to_dense()
+
+        super(SceneGraphData, self).__init__(x=x, y=y, edge_attr=edge_attr,
+                                             pos=pos, norm=norm, face=face,
+                                             edge_index=edge_index, **kwargs)
 
     @property
     def ego_mask(self):
