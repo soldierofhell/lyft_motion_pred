@@ -74,6 +74,7 @@ class AgentGraphDataset(AgentDataset):
             "centroid": data["centroid"],
             "yaw": data["yaw"],
             "extent": data["extent"],
+            "scene_index": scene_index
         }
 
 

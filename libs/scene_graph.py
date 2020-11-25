@@ -359,7 +359,6 @@ class SceneGraphBuilder(object):
             node_type_mat.append(_one_hot_mat)
 
         node_type_mat = torch.cat(node_type_mat, dim=0)
-
         padded_features = []
         for feature in features:
             pad_size = max_feature_dim - feature.shape[1]
@@ -442,7 +441,10 @@ class SceneGraphBuilder(object):
                               crosswalk_edge_index=crosswalk_edge_index,
                               speed_bump_edge_index=speed_bump_edge_index,
                               speed_hump_edge_index=speed_hump_edge_index,
-                              lane_edge_index=lane_edge_index)
+                              lane_edge_index=lane_edge_index,
+                              scene_index=scene_info["scene_index"],
+                              track_id=scene_info["track_id"],
+                              timestamp=scene_info["timestamp"])
 
 
 class SceneGraphData(Data):
@@ -463,7 +465,7 @@ class SceneGraphData(Data):
 
     @property
     def ego_node_count(self) -> int:
-        return self.ego_mask.sum().item()
+        return len(self.ego_mask)
 
     @property
     def crosswalk_mask(self):
@@ -471,7 +473,7 @@ class SceneGraphData(Data):
 
     @property
     def crosswalk_node_count(self) -> int:
-        return self.crosswalk_mask.sum().item()
+        return len(self.crosswalk_mask)
 
     @property
     def speed_bump_mask(self):
@@ -479,7 +481,7 @@ class SceneGraphData(Data):
 
     @property
     def speed_bump_node_count(self) -> int:
-        return self.speed_bump_mask.sum().item()
+        return len(self.speed_bump_mask)
 
     @property
     def speed_hump_mask(self):
@@ -487,7 +489,7 @@ class SceneGraphData(Data):
 
     @property
     def speed_hump_node_count(self) -> int:
-        return self.speed_hump_mask.sum().item()
+        return len(self.speed_hump_mask)
 
     @property
     def lane_mask(self):
@@ -495,7 +497,15 @@ class SceneGraphData(Data):
 
     @property
     def lane_node_count(self) -> int:
-        return self.lane_mask.sum().item()
+        return len(self.lane_mask)
+
+    @property
+    def stop_sign_mask(self):
+        return get_mask(self.x, SemGraphRasterizer.STOP_SIGNS)
+
+    @property
+    def agent_mask(self):
+        return get_mask(self.x, SemGraphRasterizer.AGENTS)
 
     def __inc__(self, key: str, value: int) -> int:
         if key == "ego_edge_index":
