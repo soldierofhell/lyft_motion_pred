@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-
 from l5kit.geometry import transform_points
 from l5kit.visualization import draw_trajectory, TARGET_POINTS_COLOR
 

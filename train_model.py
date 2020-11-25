@@ -9,7 +9,7 @@ from libs.model.gnn import GNN
 
 ##### CONFIG ######
 L5KIT_DATA_FOLDER = "./dataset"
-L5KIT_CONFIG_FILE = "./config/training_dataset_config.yaml"
+L5KIT_CONFIG_FILE = "./config/dataset_config.yaml"
 batch_size = 16
 max_epochs = 20
 save_top_k = 5
