@@ -64,7 +64,7 @@ def get_model():
 def main():
     lyft_graph_dataset = LyftGraphDataset(data_dir=L5KIT_DATA_FOLDER,
                                           config_file=L5KIT_CONFIG_FILE,
-                                          split="test",
+                                          split="train",
                                           transform=None,
                                           pre_transform=None)
 
