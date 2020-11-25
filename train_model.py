@@ -1,3 +1,5 @@
+import os
+
 from torch_geometric.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -15,6 +17,7 @@ max_epochs = 20
 save_top_k = 5
 ##################
 
+os.environ["L5KIT_DATA_FOLDER"] = L5KIT_DATA_FOLDER
 
 def get_model():
     ego_rf = 25 - 2
