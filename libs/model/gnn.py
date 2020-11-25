@@ -200,6 +200,8 @@ class GNN(pl.LightningModule):
                               pred=pred_pos,
                               confidences=conf,
                               avails=availabilities)
+
+        self.logger.experiment.add_scalar("Loss/Train", loss, self.current_epoch)
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
