@@ -30,6 +30,7 @@ def build_rasterizer(cfg: dict, data_manager: DataManager, debug: bool = False) 
             raster_size_px=np.array(raster_cfg["raster_size"]),
             pixel_size_m=np.array(raster_cfg["pixel_size"]),
             center_in_raster_ratio=np.array(raster_cfg["ego_center"]),
+            set_origin_to_bottom=False
         )
 
         semantic_map_filepath = data_manager.require(raster_cfg["semantic_map_key"])
