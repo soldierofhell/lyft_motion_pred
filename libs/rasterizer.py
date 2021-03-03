@@ -8,7 +8,7 @@ from l5kit.geometry import rotation33_as_yaw, transform_point, transform_points
 from l5kit.rasterization import SemanticRasterizer, RenderContext, Rasterizer
 from l5kit.data import DataManager
 from l5kit.rasterization.semantic_rasterizer import filter_tl_faces_by_status, \
-    elements_within_bounds
+    indices_in_bounds
 from l5kit.rasterization.box_rasterizer import filter_agents_by_labels, get_ego_as_agent, filter_agents_by_track_id
 from l5kit.rasterization import build_rasterizer as l5kit_build_rasterizer
 from l5kit.rasterization.rasterizer_builder import _load_metadata
@@ -425,7 +425,7 @@ class SemGraphRasterizer(SemanticRasterizer):
                   active_tl_ids: set,
                   raster_radius: float) -> Iterator[Dict[str, Any]]:
 
-        lane_indexes = elements_within_bounds(center_in_world,
+        lane_indexes = indices_in_bounds(center_in_world,
                                               self.bounds_info["lanes"]["bounds"],
                                               raster_radius)
         for idx in lane_indexes:
@@ -474,7 +474,7 @@ class SemGraphRasterizer(SemanticRasterizer):
                                 raster_from_world: np.ndarray,
                                 raster_radius: float,
                                 element_key: str):
-        element_indexes = elements_within_bounds(center_in_world,
+        element_indexes = indices_in_bounds(center_in_world,
                                                  self.bounds_info[element_key]["bounds"],
                                                  raster_radius)
         for idx in element_indexes:
