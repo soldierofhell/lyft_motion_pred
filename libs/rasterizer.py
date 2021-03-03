@@ -193,7 +193,7 @@ class SemGraphRasterizer(SemanticRasterizer):
 
     def _get_parent_road_network_segment(self, lane: Lane) -> RoadNetworkSegment:
         parent_road_network_seg_id: str = MapAPI.id_as_str(lane.parent_segment_or_junction)
-        parent_road_network_seg: RoadNetworkSegment = self.proto_API[parent_road_network_seg_id]
+        parent_road_network_seg: RoadNetworkSegment = self.mapAPI[parent_road_network_seg_id]
         return parent_road_network_seg
 
     def _get_road_class(self, road: RoadNetworkSegment) -> str:
@@ -280,7 +280,7 @@ class SemGraphRasterizer(SemanticRasterizer):
                         "signal_upper_left_arrow", "signal_upper_right_arrow"]
 
         for element_id in traffic_control_ids:
-            element = self.proto_API[element_id]
+            element = self.mapAPI[element_id]
             if not element.element.HasField("traffic_control_element"):
                 continue
 
@@ -315,23 +315,23 @@ class SemGraphRasterizer(SemanticRasterizer):
         return bool(traffic_element.HasField("speed_hump") and traffic_element.geo_frame)
 
     def get_polyline_coords(self, element_id: str):
-        element = self.proto_API[element_id]
+        element = self.mapAPI[element_id]
         # assert self.is_speed_bump(element) or self.is_speed_hump(element) or self.is_stop_sign(element)
 
         el = element.element.traffic_control_element
 
-        xyz = self.proto_API.unpack_deltas_cm(el.points_x_deltas_cm,
+        xyz = self.mapAPI.unpack_deltas_cm(el.points_x_deltas_cm,
                                               el.points_y_deltas_cm,
                                               el.points_z_deltas_cm,
                                               el.geo_frame)
         return xyz
 
     def get_stop_sign_coords(self, element_id: str):
-        element = self.proto_API[element_id]
+        element = self.mapAPI[element_id]
         assert self.is_stop_sign(element)
 
         stop_sign = element.element.traffic_control_element
-        xyz = self.proto_API.unpack_deltas_cm([0],
+        xyz = self.mapAPI.unpack_deltas_cm([0],
                                               [0],
                                               [0],
                                               stop_sign.geo_frame)
@@ -357,7 +357,7 @@ class SemGraphRasterizer(SemanticRasterizer):
         speed_hump_bounds = np.empty((0, 2, 2), dtype=np.float)
         stop_sign_bounds = np.empty((0, 2, 2), dtype=np.float)
 
-        for element in self.proto_API:
+        for element in self.mapAPI:
             element_id = MapAPI.id_as_str(element.id)
 
             if self.is_speed_bump(element):
@@ -390,8 +390,8 @@ class SemGraphRasterizer(SemanticRasterizer):
                 stop_sign_bounds = np.append(stop_sign_bounds, np.asarray([[[x_min, y_min], [x_max, y_max]]]), axis=0)
                 stop_signs_ids.append(element_id)
 
-            if self.proto_API.is_lane(element):
-                lane = self.proto_API.get_lane_coords(element_id)
+            if self.mapAPI.is_lane(element):
+                lane = self.mapAPI.get_lane_coords(element_id)
                 x_min = min(np.min(lane["xyz_left"][:, 0]), np.min(lane["xyz_right"][:, 0]))
                 y_min = min(np.min(lane["xyz_left"][:, 1]), np.min(lane["xyz_right"][:, 1]))
                 x_max = max(np.max(lane["xyz_left"][:, 0]), np.max(lane["xyz_right"][:, 0]))
@@ -400,8 +400,8 @@ class SemGraphRasterizer(SemanticRasterizer):
                 lanes_bounds = np.append(lanes_bounds, np.asarray([[[x_min, y_min], [x_max, y_max]]]), axis=0)
                 lanes_ids.append(element_id)
 
-            if self.proto_API.is_crosswalk(element):
-                crosswalk = self.proto_API.get_crosswalk_coords(element_id)
+            if self.mapAPI.is_crosswalk(element):
+                crosswalk = self.mapAPI.get_crosswalk_coords(element_id)
                 x_min = np.min(crosswalk["xyz"][:, 0])
                 y_min = np.min(crosswalk["xyz"][:, 1])
                 x_max = np.max(crosswalk["xyz"][:, 0])
@@ -431,9 +431,9 @@ class SemGraphRasterizer(SemanticRasterizer):
                                               raster_radius)
         for idx in lane_indexes:
             lane_id = self.mapAPI.bounds_info["lanes"]["ids"][idx]
-            lane = self.proto_API[lane_id].element.lane
+            lane = self.mapAPI[lane_id].element.lane
             parent_road = self._get_parent_road_network_segment(lane)
-            lane_coords = self.proto_API.get_lane_coords(self.mapAPI.bounds_info["lanes"]["ids"][idx])
+            lane_coords = self.mapAPI.get_lane_coords(self.mapAPI.bounds_info["lanes"]["ids"][idx])
 
             lane_tl_ids = set([MapAPI.id_as_str(la_tc) for la_tc in lane.traffic_controls])
             lane_tl_ids = lane_tl_ids.intersection(active_tl_ids)
