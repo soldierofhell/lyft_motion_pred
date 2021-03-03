@@ -67,6 +67,7 @@ class SemGraphRasterizer(SemanticRasterizer):
         self.debug = debug
         self.filter_agents_threshold = filter_agents_threshold
         self.history_num_frames = history_num_frames
+        self.bounds_info = self.get_bounds()
         super(SemGraphRasterizer, self).__init__(render_context, semantic_map_path, world_to_ecef)
 
     def rasterize(self,
@@ -427,13 +428,13 @@ class SemGraphRasterizer(SemanticRasterizer):
                   raster_radius: float) -> Iterator[Dict[str, Any]]:
 
         lane_indexes = indices_in_bounds(center_in_world,
-                                              self.mapAPI.bounds_info["lanes"]["bounds"],
+                                              self.bounds_info["lanes"]["bounds"],
                                               raster_radius)
         for idx in lane_indexes:
-            lane_id = self.mapAPI.bounds_info["lanes"]["ids"][idx]
+            lane_id = self.bounds_info["lanes"]["ids"][idx]
             lane = self.mapAPI[lane_id].element.lane
             parent_road = self._get_parent_road_network_segment(lane)
-            lane_coords = self.mapAPI.get_lane_coords(self.mapAPI.bounds_info["lanes"]["ids"][idx])
+            lane_coords = self.mapAPI.get_lane_coords(self.bounds_info["lanes"]["ids"][idx])
 
             lane_tl_ids = set([MapAPI.id_as_str(la_tc) for la_tc in lane.traffic_controls])
             lane_tl_ids = lane_tl_ids.intersection(active_tl_ids)
@@ -476,10 +477,10 @@ class SemGraphRasterizer(SemanticRasterizer):
                                 raster_radius: float,
                                 element_key: str):
         element_indexes = indices_in_bounds(center_in_world,
-                                                 self.mapAPI.bounds_info[element_key]["bounds"],
+                                                 self.bounds_info[element_key]["bounds"],
                                                  raster_radius)
         for idx in element_indexes:
-            xyz = self.get_polyline_coords(self.mapAPI.bounds_info[element_key]["ids"][idx])
+            xyz = self.get_polyline_coords(self.bounds_info[element_key]["ids"][idx])
 
             xy_pos = transform_points(xyz[:, :2], raster_from_world)
 
