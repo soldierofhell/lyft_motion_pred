@@ -42,6 +42,8 @@ raster_params:
 
   # whether to completely disable traffic light faces in the semantic rasterizer
   disable_traffic_light_faces: False
+  
+  set_origin_to_bottom: False
 
 ###################
 ## Data loader options
