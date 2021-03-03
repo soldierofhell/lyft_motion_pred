@@ -13,6 +13,8 @@ model_params:
   future_num_frames: 50
   future_step_size: 1
   future_delta_time: 0.1
+  
+  step_time: 0.1
 
 ###################
 ## Input raster parameters
