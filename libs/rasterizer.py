@@ -66,9 +66,9 @@ class SemGraphRasterizer(SemanticRasterizer):
     ):
         self.debug = debug
         self.filter_agents_threshold = filter_agents_threshold
-        self.history_num_frames = history_num_frames
-        self.bounds_info = self.get_bounds()
+        self.history_num_frames = history_num_frames        
         super(SemGraphRasterizer, self).__init__(render_context, semantic_map_path, world_to_ecef)
+        self.bounds_info = self.get_bounds()
 
     def rasterize(self,
                   history_frames: np.ndarray,
